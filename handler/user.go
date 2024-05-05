@@ -87,7 +87,6 @@ func UserInfoHandler(w http.ResponseWriter, r *http.Request) {
 	// if !isValidToken {
 	// 	w.WriteHeader(http.StatusForbidden) // 403错误
 	// 	return
-	}
 	// 3. 查询用户信息
 	user, err := db.GetUserInfo(username)
 	if err != nil {
