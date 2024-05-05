@@ -3,6 +3,7 @@ package handler
 import (
 	"Distributed-cloud-storage/db"
 	"Distributed-cloud-storage/meta"
+	"Distributed-cloud-storage/store/ceph"
 	"Distributed-cloud-storage/util"
 	"encoding/json"
 	"fmt"
@@ -12,6 +13,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"gopkg.in/amz.v3/s3"
 )
 
 // 处理文件上传
@@ -48,6 +51,15 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		newFile.Seek(0, 0)
 		fileMeta.FileSha1 = util.FileSha1(newFile)
+
+		// 同时将文件写入ceph存储
+		newFile.Seek(0, 0) // 文件指针置零
+		data, _ := ioutil.ReadAll(newFile)
+		bucket, err := ceph.GetCephBucket("userfile")
+		cephPath := "/ceph/" + fileMeta.FileSha1 //文件存储路径
+		_ = bucket.Put(cephPath, data, "octet-stream", s3.PublicRead)
+		fileMeta.Location = cephPath
+
 		// meta.UpdateFileMeta(fileMeta)
 		_ = meta.UpdateFileMetaDB(fileMeta)
 
