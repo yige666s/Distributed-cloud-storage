@@ -3,7 +3,7 @@ package handler
 import (
 	"Distributed-cloud-storage/db"
 	"Distributed-cloud-storage/meta"
-	"Distributed-cloud-storage/store/ceph"
+	"Distributed-cloud-storage/store/oss"
 	"Distributed-cloud-storage/util"
 	"encoding/json"
 	"fmt"
@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"time"
 
-	"gopkg.in/amz.v3/s3"
+	aoss "github.com/aliyun/aliyun-oss-go-sdk/oss"
 )
 
 // 处理文件上传
@@ -54,11 +54,23 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 		// 同时将文件写入ceph存储
 		newFile.Seek(0, 0) // 文件指针置零
-		data, _ := ioutil.ReadAll(newFile)
-		bucket, err := ceph.GetCephBucket("userfile")
-		cephPath := "/ceph/" + fileMeta.FileSha1 //文件存储路径
-		_ = bucket.Put(cephPath, data, "octet-stream", s3.PublicRead)
-		fileMeta.Location = cephPath
+		// data, _ := ioutil.ReadAll(newFile)
+		// bucket, err := ceph.GetCephBucket("userfile")
+		// cephPath := "/ceph/" + fileMeta.FileSha1 //文件存储路径
+		// _ = bucket.Put(cephPath, data, "octet-stream", s3.PublicRead)
+		// fileMeta.Location = cephPath
+
+		// 同时将文件写入oss存储
+		ossPath := "oss/" + fileMeta.FileSha1
+		options := []aoss.Option{ // 保证下载时为原文件名
+			aoss.ContentDisposition("attachment;filename=\"" + fileMeta.FileName + "\"")}
+		err = oss.Bucket().PutObject(ossPath, newFile, options...)
+		if err != nil {
+			fmt.Println(err.Error())
+			w.Write([]byte("upload failed"))
+			return
+		}
+		fileMeta.Location = ossPath
 
 		// meta.UpdateFileMeta(fileMeta)
 		_ = meta.UpdateFileMetaDB(fileMeta)
@@ -221,4 +233,15 @@ func TryFaseUploadHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write(res.JSONBytes())
 		return
 	}
+}
+
+// oss下载链接获取
+func DownloadURLHandler(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	filehash := r.Form.Get("filehash")
+	// 从我呢见表查询记录
+	row, _ := db.GetFileMeta(filehash)
+	// 判断文件在OSS还是Ceph
+	signedURL := oss.DownloadUrl(row.FileAddr.String)
+	w.Write([]byte(signedURL))
 }

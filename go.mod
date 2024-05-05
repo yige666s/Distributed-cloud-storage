@@ -17,7 +17,10 @@ require (
 // github.com/aws/aws-sdk-go-v2/service/s3 v1.53.1
 require gopkg.in/amz.v3 v3.0.0-20201001071545-24fc1eceb27b
 
+require github.com/aliyun/aliyun-oss-go-sdk v3.0.2+incompatible
+
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
+	golang.org/x/time v0.5.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )

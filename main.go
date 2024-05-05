@@ -22,6 +22,8 @@ func main() {
 	http.HandleFunc("/file/mpupload/uppart", handler.UploadHandler)
 	http.HandleFunc("/file/mpupload/complete", handler.CompleteUploadHandler)
 
+	http.HandleFunc("/file/downloadurl", handler.DownloadURLHandler)
+
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
 		fmt.Printf("Failed to start server, err : %s", err)
