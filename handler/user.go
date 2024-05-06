@@ -4,60 +4,75 @@ import (
 	"Distributed-cloud-storage/db"
 	"Distributed-cloud-storage/util"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 const (
 	pwd_salt = "*#890" //加盐
 )
 
-// 处理用户注册请求
-func SignUpHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet { // Get请求，返回注册页面
-		data, err := ioutil.ReadFile("./static/view/signup.html")
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		w.Write(data)
-		return
-	}
-	r.ParseForm() //POST请求，用户注册
-	username := r.Form.Get(("username"))
-	passwd := r.Form.Get("password")
+// 处理Get请求返回注册页面
+func SignUpHandler(c *gin.Context) {
+	c.Redirect(http.StatusFound, "/static/view/signup.html")
+}
+
+// 处理POST请求处理注册表单
+func DoSignuphander(c *gin.Context) {
+	username := c.Request.FormValue(("username"))
+	passwd := c.Request.FormValue("password")
 	if len(username) < 3 || len(passwd) < 5 {
-		w.Write([]byte("invalid paprameter")) // 用户明/密码格式不正确
+		c.JSON(http.StatusOK, gin.H{ //  用户明/密码格式不正确
+			"msg":  "invalid parameter",
+			"code": -1,
+		})
 		return
 	}
 
 	enc_passwd := util.Sha1([]byte(passwd + pwd_salt)) // 对密码进行加盐处理
 	suc := db.UserSignup(username, enc_passwd)
 	if suc {
-		w.Write([]byte("SUCCESS"))
+		c.JSON(http.StatusOK, gin.H{ //  注册成功
+			"msg":  "Signup Succeed",
+			"code": 0,
+		})
 	} else {
-		w.Write([]byte("FAILED"))
+		c.JSON(http.StatusOK, gin.H{ //  注册失败
+			"msg":  "Signup failed",
+			"code": -2,
+		})
 	}
 }
 
-// 登录接口
-func SignInHandler(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	username := r.Form.Get("username")
-	password := r.Form.Get("password")
+// 返回登陆页面Get请求
+func SignInHandler(c *gin.Context) {
+	c.Redirect(http.StatusFound, "/static/view/signin.html")
+}
+
+// 处理POST登录表单请求
+func DoSignInHandler(c *gin.Context) {
+	username := c.Request.FormValue("username")
+	password := c.Request.FormValue("password")
 	enc_passwd := util.Sha1([]byte(password + pwd_salt))
 	// 1. 校验用户名和密码
 	pwdChecked := db.UserSignIn(username, enc_passwd)
 	if !pwdChecked {
-		w.Write([]byte("FAILED"))
+		c.JSON(http.StatusOK, gin.H{
+			"msg":  "login failed",
+			"code": -1,
+		})
 		return
 	}
 	// 2. 生成访问凭证(token)
 	token := GenToken(username)
 	upRes := db.UpdateToken(username, token)
 	if !upRes {
-		w.Write([]byte("FAILED"))
+		c.JSON(http.StatusOK, gin.H{
+			"msg":  "login failed",
+			"code": -2,
+		})
 		return
 	}
 	// 3. 登陆成功后重定向至首页,具体重定向操作由客户端实现
@@ -70,13 +85,14 @@ func SignInHandler(w http.ResponseWriter, r *http.Request) {
 			Username string
 			Token    string
 		}{
-			Location: "http://" + r.Host + "/static/view/home.html",
+			Location: "/static/view/home.html",
 			Username: username,
 			Token:    token,
 		},
 	}
-	w.Write(resp.JSONBytes()) // 以Json形式返回数据
+	c.Data(http.StatusOK, "application/json", resp.JSONBytes())
 }
+
 func UserInfoHandler(w http.ResponseWriter, r *http.Request) {
 	// 1.解析请求参数
 	r.ParseForm()
