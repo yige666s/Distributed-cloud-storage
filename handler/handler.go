@@ -1,8 +1,11 @@
 package handler
 
 import (
+	"Distributed-cloud-storage/common"
+	"Distributed-cloud-storage/config"
 	"Distributed-cloud-storage/db"
 	"Distributed-cloud-storage/meta"
+	"Distributed-cloud-storage/mq"
 	"Distributed-cloud-storage/store/oss"
 	"Distributed-cloud-storage/util"
 	"encoding/json"
@@ -13,8 +16,6 @@ import (
 	"os"
 	"strconv"
 	"time"
-
-	aoss "github.com/aliyun/aliyun-oss-go-sdk/oss"
 )
 
 // 处理文件上传
@@ -62,15 +63,24 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 		// 同时将文件写入oss存储
 		ossPath := "oss/" + fileMeta.FileSha1
-		options := []aoss.Option{ // 保证下载时为原文件名
-			aoss.ContentDisposition("attachment;filename=\"" + fileMeta.FileName + "\"")}
-		err = oss.Bucket().PutObject(ossPath, newFile, options...)
-		if err != nil {
-			fmt.Println(err.Error())
-			w.Write([]byte("upload failed"))
-			return
+		// err = oss.Bucket().PutObject(ossPath, newFile, options...)
+		// if err != nil {
+		// 	fmt.Println(err.Error())
+		// 	w.Write([]byte("upload failed"))
+		// 	return
+		// }
+		// fileMeta.Location = ossPath
+		data := mq.TansferData{
+			FileHash:      fileMeta.FileSha1,
+			CurLocation:   fileMeta.Location,
+			DesLocation:   ossPath,
+			DestStoreType: common.StoreOSS,
 		}
-		fileMeta.Location = ossPath
+		pubData, _ := json.Marshal(data)
+		suc := mq.Publish(config.TransExchangeName, config.TransOSSRoutingKey, pubData)
+		if !suc {
+			//TODO:加入死信队列，重试发送
+		}
 
 		// meta.UpdateFileMeta(fileMeta)
 		_ = meta.UpdateFileMetaDB(fileMeta)
@@ -78,7 +88,7 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		// TODO:更新用户文件表
 		r.ParseForm()
 		username := r.Form.Get("username")
-		suc := db.OnUserFileUploadFinished(username, fileMeta.FileSha1, fileMeta.FileName, fileMeta.FileSize)
+		suc = db.OnUserFileUploadFinished(username, fileMeta.FileSha1, fileMeta.FileName, fileMeta.FileSize)
 		if suc {
 			http.Redirect(w, r, "/file/upload/suc", http.StatusFound)
 		} else {

@@ -6,6 +6,8 @@ replace Distributed-cloud-storage/handler => ./handler
 
 replace Distributed-cloud-storage/meta => ./meta
 
+replace Distributed-cloud-storage/db/conn => ./db/conn
+
 require (
 	// github.com/garyburd/redigo v1.6.4
 	github.com/go-sql-driver/mysql v1.8.1
@@ -17,7 +19,11 @@ require (
 // github.com/aws/aws-sdk-go-v2/service/s3 v1.53.1
 require gopkg.in/amz.v3 v3.0.0-20201001071545-24fc1eceb27b
 
-require github.com/aliyun/aliyun-oss-go-sdk v3.0.2+incompatible
+require (
+	github.com/aliyun/aliyun-oss-go-sdk v3.0.2+incompatible
+	github.com/micro/cli v0.2.0
+	github.com/streadway/amqp v1.1.0
+)
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
