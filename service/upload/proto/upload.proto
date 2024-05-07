@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package go.micro.service.upload;
+
+option go_package = "./upload";
+
+message ReqEntry{
+
+}
+
+message RespEntry{
+	int32 code = 1;
+	string message = 2;
+	string entry = 3;
+}
+
+service UploadEntry{
+	// 获取上传入口地址
+	rpc UploadEntry (RespEntry) returns (RespEntry);
+}

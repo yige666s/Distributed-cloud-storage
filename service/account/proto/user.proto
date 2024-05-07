@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package proto;
+option go_package = "./user";
+
+
+message ReqSignup{
+	string username = 1;
+	string password = 2;
+}
+
+message RespSignup{
+	int32 code = 1;
+	string message = 2;
+}
+
+message ReqSingIn{
+	string username = 1;
+	string password = 2;
+}
+
+message RespSignIn{
+	int32 code = 1;
+	string message = 2;
+}
+
+service UserService{
+	rpc SignUp(ReqSignup) returns (RespSignup){}
+	// rpc SingIn(ReqSingIn) returns (RespSignIn){}
+}
